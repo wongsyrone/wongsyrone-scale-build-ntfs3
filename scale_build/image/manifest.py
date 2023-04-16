@@ -48,6 +48,11 @@ def build_manifest():
             'kernel_version': get_kernel_version(CHROOT_BASEDIR),
         }))
 
+    shutil.copyfile(
+        os.path.join(UPDATE_DIR, 'manifest.json'),
+        os.path.join(RELEASE_DIR, 'manifest-for-update.json')
+    )
+
     return version
 
 
