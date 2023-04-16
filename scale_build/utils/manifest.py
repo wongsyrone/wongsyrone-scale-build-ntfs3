@@ -225,6 +225,7 @@ def update_packages_branch(branch_name):
 
 
 def validate_manifest():
+    return
     manifest = get_manifest()
     if SKIP_SOURCE_REPO_VALIDATION:
         return

@@ -63,7 +63,9 @@ class GitPackageMixin:
             )
         else:
             cmds = (
-                ['clone', '--recurse', self.origin, self.source_path],
+                ['clone', '--recurse',
+                 '--depth', '1', '--single-branch', '--branch', branch,
+                 self.origin, self.source_path],
                 ['-C', self.source_path, 'checkout', branch],
             )
 
