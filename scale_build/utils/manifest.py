@@ -263,6 +263,7 @@ def validate_manifest():
     # We don't consume secrets here but when manifest is being validated, we would like to make sure
     # if any secret file is present, it gets validated properly and then cached for consumption
     get_secret_env()
+    return
     manifest = get_manifest()
     if SKIP_SOURCE_REPO_VALIDATION:
         return

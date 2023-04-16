@@ -44,6 +44,7 @@ class CacheMixin:
 
     @property
     def mirror_cache_intact(self):
+        from .bootstrapdir import PackageBootstrapDir, RootfsBootstrapDir, CdromBootstrapDirectory
         intact = True
         if not self.cache_exists:
             # No hash file? Lets remove to be safe
@@ -53,6 +54,15 @@ class CacheMixin:
         elif get_all_repo_hash() != self.get_mirror_cache():
             self.logger.debug('Upstream repo changed! Removing squashfs cache to re-create.')
             intact = False
+
+        if isinstance(self, PackageBootstrapDir):
+            tmp_name = "PackageBootstrapDir"
+        elif isinstance(self, RootfsBootstrapDir):
+            tmp_name = "RootfsBootstrapDir"
+        elif isinstance(self, CdromBootstrapDirectory):
+            tmp_name = "CdromBootstrapDirectory"
+        else:
+            tmp_name = None
 
         if intact:
             self.restore_cache(self.chroot_basedir)
@@ -74,6 +84,9 @@ class CacheMixin:
 
         if not intact:
             self.remove_cache()
+            if tmp_name is not None:
+                with open(f'/tmp/{tmp_name}', 'w') as f:
+                    f.write(f"{(1 if intact else 0)}")
 
         return intact
 

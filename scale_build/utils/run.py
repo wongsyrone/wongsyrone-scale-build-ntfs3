@@ -10,6 +10,13 @@ logger = logging.getLogger(__name__)
 
 
 def run(*args, **kwargs):
+    if isinstance(args[0], tuple):
+        a = list(args[0])
+        a.insert(0, "sudo")
+        args[0] = a
+    elif isinstance(args[0], list):
+        args[0].insert(0, "sudo")
+
     if isinstance(args[0], list):
         args = tuple(args[0])
     kwargs.setdefault('stdout', subprocess.PIPE)

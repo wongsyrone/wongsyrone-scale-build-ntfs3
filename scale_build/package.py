@@ -70,7 +70,14 @@ def build_package(package_queue, to_build, failed, in_progress, built):
                     package.setup_chroot_basedir()
                     package.make_overlayfs()
                     with APT_LOCK:
-                        package.clean_previous_packages()
+                        is_cleaned_prev_pkg = package.clean_previous_packages()
+                        if is_cleaned_prev_pkg:
+                            logger.debug('Building local APT repo after cleaning prev pkgs... %r', package.name)
+                            run(
+                                f'cd {PKG_DIR} && dpkg-scanpackages --multiversion . /dev/null'
+                                '| gzip -9c > Packages.gz',
+                                shell=True
+                            )
                         shutil.copytree(PKG_DIR, package.dpkg_overlay_packages_path)
                     package._build_impl()
             except Exception as e:
@@ -82,7 +89,7 @@ def build_package(package_queue, to_build, failed, in_progress, built):
             else:
                 with APT_LOCK:
                     with LoggingContext(os.path.join('packages', package.name)):
-                        logger.debug('Building local APT repo Packages.gz...')
+                        logger.debug('Building local APT repo Packages.gz... %r', package.name)
                         run(
                             f'cd {PKG_DIR} && dpkg-scanpackages --multiversion . /dev/null | gzip -9c > Packages.gz',
                             shell=True

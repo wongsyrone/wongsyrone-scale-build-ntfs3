@@ -1,0 +1,328 @@
+name: build_all
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  TRUENAS_EXPERIMENTAL: n
+
+jobs:
+  build_pkg:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reclaim disk space
+        # commands taken from https://github.com/openzfs/zfs/commit/e2909fae8f2c3b15459fd4c0acc1999c6907864b
+        run: |
+          sudo docker system prune --force --all --volumes
+          sudo rm -rf \
+              /usr/share/az* \
+              /usr/share/dotnet \
+              /usr/share/gradle* \
+              /usr/share/miniconda \
+              /usr/share/swift \
+              /var/lib/gems \
+              /var/lib/mysql \
+              /var/lib/snapd
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          swap-size-mb: 10240
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+      - name: Setup China timezone
+        run: |
+          sudo timedatectl set-timezone Asia/Shanghai
+          sudo timedatectl
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        id: setup-python
+        uses: actions/setup-python@v5
+        # do NOT set PYTHON env, pyzfs/openzfs use it to find chrooted python3
+        with:
+          python-version: 3.12
+          update-environment: false
+      - name: setup-python set env
+        id: setup-python-set-env
+        run: |
+          echo "MY_PYTHON_PATH=${{ steps.setup-python.outputs.python-path }}" >> $GITHUB_ENV
+      - name: Install additional pkgs
+        run: |
+          sudo apt-get update
+          sudo apt-get --no-install-recommends install sshpass build-essential debootstrap git python3-pip python3-venv squashfs-tools unzip libjson-perl rsync
+          sudo git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+      - name: setup scale_build
+        id: setup-scale_build
+        # commands modified from truenas scale-build Makefile
+        run: |
+          echo "==========SETUP scale-build=========="
+          ${{ env.MY_PYTHON_PATH }} -m pip install --upgrade pip
+          ${{ env.MY_PYTHON_PATH }} -m venv --upgrade-deps venv-tn
+          echo "==========CHECK python LOCATION=========="
+          . ./venv-tn/bin/activate && which python
+          . ./venv-tn/bin/activate && python -m pip install -r requirements.txt
+          . ./venv-tn/bin/activate && python -m pip install .
+          echo "==========CHECK scale_build LOCATION=========="
+          . ./venv-tn/bin/activate && which scale_build
+          . ./venv-tn/bin/activate && echo "SCALE_BUILD_BIN=$(which scale_build)" >> $GITHUB_ENV
+      - name: checkout sources
+        id: checkout-sources
+        # commands modified from truenas scale-build Makefile
+        run: |
+          echo "==========CHECKOUT source files=========="
+          . ./venv-tn/bin/activate && sudo ${{ env.SCALE_BUILD_BIN }} checkout
+      - name: lower tmp folder permission
+        run: |
+          sudo chown -Rc runner:runner tmp
+      - name: Restore tmp dir including built packages
+        id: restore-pkg
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tmp
+            !tmp/ccache
+            !tmp/cdrom
+            !tmp/release
+            !tmp/update
+          key: ${{ runner.os }}-pkg-cache
+      - name: build packages
+        id: make-pkg
+        # commands taken from truenas scale-build Makefile
+        run: |
+          echo "==========build PACKAGES=========="
+          . ./venv-tn/bin/activate && sudo ${{ env.SCALE_BUILD_BIN }} packages
+      - name: delete current pkg cache
+        id: delete-current-pkg-cache
+        if: ${{ !cancelled() }}
+        run: |
+          set -o pipefail
+          set -ex
+          echo 'delete pkg cache in github action'
+          curl -L \
+            -X DELETE \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${{ github.event.repository.owner.name }}/${{ github.event.repository.name }}/actions/caches?key=${{ runner.os }}-pkg-cache"
+          echo 'setting GH env to notify save pkg cache'
+          echo "MY_SHOULD_SAVE_PKG_CACHE=1" >> $GITHUB_ENV
+      - name: cache tmp dir including built packages
+        id: cache-pkg
+        uses: actions/cache/save@v4
+        if: ${{ !cancelled() }}
+        with:
+          path: |
+            tmp
+            !tmp/ccache
+            !tmp/cdrom
+            !tmp/release
+            !tmp/update
+          key: ${{ steps.restore-pkg.outputs.cache-primary-key }}
+      - name: Archive logs artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-pkg
+          path: |
+            logs
+      - name: space after builds
+        run: |
+          echo "Memory and swap:"
+          free
+          echo
+          swapon --show
+          echo
+          echo "Available storage:"
+          df -h
+          echo
+      - name: display tree of tmp and owner/group
+        run: |
+          set -o pipefail
+          set -ex
+          sudo tree tmp || true
+          sudo ls -al tmp tmp/tmpfs || true
+  build_update_iso:
+    # best effort for this job cache handling: remove cache if not usable for scale-build
+    needs: build_pkg
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reclaim disk space
+        # commands taken from https://github.com/openzfs/zfs/commit/e2909fae8f2c3b15459fd4c0acc1999c6907864b
+        run: |
+          sudo docker system prune --force --all --volumes
+          sudo rm -rf \
+              /usr/share/az* \
+              /usr/share/dotnet \
+              /usr/share/gradle* \
+              /usr/share/miniconda \
+              /usr/share/swift \
+              /var/lib/gems \
+              /var/lib/mysql \
+              /var/lib/snapd
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          swap-size-mb: 10240
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+      - name: Setup China timezone
+        run: |
+          sudo timedatectl set-timezone Asia/Shanghai
+          sudo timedatectl
+      - uses: actions/checkout@v4
+      - name: Set up Python 3.12
+        id: setup-python
+        uses: actions/setup-python@v5
+        # do NOT set PYTHON env, pyzfs/openzfs use it to find chrooted python3
+        with:
+          python-version: 3.12
+          update-environment: false
+      - name: setup-python set env
+        id: setup-python-set-env
+        run: |
+          echo "MY_PYTHON_PATH=${{ steps.setup-python.outputs.python-path }}" >> $GITHUB_ENV
+      - name: Install additional pkgs
+        # libarchive-tools provide bsdtar for scale-build
+        run: |
+          sudo apt-get update
+          sudo apt-get --no-install-recommends install sshpass build-essential debootstrap git python3-pip python3-venv squashfs-tools unzip libjson-perl rsync libarchive-tools
+          sudo git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+      - name: lower tmp folder permission
+        run: |
+          mkdir -p tmp
+          sudo chown -Rc runner:runner tmp
+      - name: Restore tmp dir including built packages
+        id: restore-pkg
+        uses: actions/cache/restore@v4
+        with:
+          fail-on-cache-miss: true
+          path: |
+            tmp
+            !tmp/ccache
+            !tmp/cdrom
+            !tmp/release
+            !tmp/update
+          key: ${{ runner.os }}-pkg-cache
+      - name: Restore rootfs and iso chroot cache
+        id: restore-rootfs-iso-chroot-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            tmp/cache/basechroot-rootfs.squashfs*
+            tmp/cache/basechroot-cdrom.squashfs*
+            tmp/pkghashes/basechroot-rootfs_packages.json
+            tmp/pkghashes/basechroot-cdrom_packages.json
+          key: ${{ runner.os }}-chroot-cache
+      - name: display tree of cache and owner/group
+        run: |
+          set -o pipefail
+          set -ex
+          sudo tree tmp || true
+          sudo ls -al tmp tmp/tmpfs || true
+      - name: restored cache fix permissions
+        # tmp folder is created using sudo in GitHub CI, resetting its owner to root
+        run: |
+          set -o pipefail
+          set -ex
+          sudo chown -Rc root:root tmp || true
+          sudo ls -al tmp tmp/tmpfs || true
+      - name: setup scale_build
+        id: setup-scale_build
+        # commands modified from truenas scale-build Makefile
+        run: |
+          echo "==========SETUP scale-build=========="
+          ${{ env.MY_PYTHON_PATH }} -m pip install --upgrade pip
+          ${{ env.MY_PYTHON_PATH }} -m venv --upgrade-deps venv-tn
+          echo "==========CHECK python LOCATION=========="
+          . ./venv-tn/bin/activate && which python
+          . ./venv-tn/bin/activate && python -m pip install -r requirements.txt
+          . ./venv-tn/bin/activate && python -m pip install .
+          echo "==========CHECK scale_build LOCATION=========="
+          . ./venv-tn/bin/activate && which scale_build
+          . ./venv-tn/bin/activate && echo "SCALE_BUILD_BIN=$(which scale_build)" >> $GITHUB_ENV
+      - name: Make update and iso
+        id: make-update-n-iso
+        # commands modified from truenas scale-build Makefile
+        run: |
+          echo "==========build UPDATE file=========="
+          . ./venv-tn/bin/activate && sudo ${{ env.SCALE_BUILD_BIN }} update
+          echo "==========build ISO file=========="
+          . ./venv-tn/bin/activate && sudo ${{ env.SCALE_BUILD_BIN }} iso
+      - name: Archive logs artifacts
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs
+          path: |
+            logs
+      - name: tree of artifacts
+        run: |
+          tree tmp/release
+      - name: space after builds
+        run: |
+          echo "Memory and swap:"
+          free
+          echo
+          swapon --show
+          echo
+          echo "Available storage:"
+          df -h
+          echo
+      - name: delete invalid rootfs and iso cache
+        id: delete-invalid-rootfs-iso-chroot-cache
+        if: steps.restore-rootfs-iso-chroot-cache.outputs.cache-hit != 'false'
+        run: |
+          set -o pipefail
+          set -ex
+          should_delete=0
+          if [ -f /tmp/RootfsBootstrapDir ] || [ -f /tmp/CdromBootstrapDirectory ]; then
+            if grep -Fxq "0" /tmp/RootfsBootstrapDir; then
+              should_delete=1
+            fi
+            if grep -Fxq "0" /tmp/CdromBootstrapDirectory; then
+              should_delete=1
+            fi
+          fi
+          if [ $should_delete = 1 ]; then
+            echo 'try to delete chroot cache in github action'
+            curl -L \
+              -X DELETE \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${{ github.event.repository.owner.name }}/${{ github.event.repository.name }}/actions/caches?key=${{ runner.os }}-chroot-cache"
+            echo 'setting GH env to notify save'
+            echo "MY_SHOULD_SAVE_ROOTFS_N_ISO_CACHE=1" >> $GITHUB_ENV
+          fi
+      - name: save rootfs and iso chroot cache
+        id: save-rootfs-iso-chroot-cache
+        if: steps.make-update-n-iso.outcome == 'success' && env.MY_SHOULD_SAVE_ROOTFS_N_ISO_CACHE == '1'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            tmp/cache/basechroot-rootfs.squashfs*
+            tmp/cache/basechroot-cdrom.squashfs*
+            tmp/pkghashes/basechroot-rootfs_packages.json
+            tmp/pkghashes/basechroot-cdrom_packages.json
+          key: ${{ runner.os }}-chroot-cache
+      - name: upload artifacts
+        uses: actions/upload-artifact@v4
+        if: steps.make-update-n-iso.outcome == 'success'
+        with:
+          name: built-update-image-extensions-and-iso
+          path: |
+            tmp/release/*.iso*
+            tmp/release/*.update*
+            tmp/release/*.json
+      - name: display tree of tmp and owner/group
+        run: |
+          set -o pipefail
+          set -ex
+          sudo tree tmp || true
+          sudo ls -al tmp tmp/tmpfs || true
