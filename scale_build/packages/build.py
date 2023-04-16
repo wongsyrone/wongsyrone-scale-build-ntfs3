@@ -15,6 +15,7 @@ from scale_build.utils.paths import PKG_DIR
 class BuildPackageMixin:
 
     def run_in_chroot(self, command, exception_message=None):
+        command = command.replace('"', '\\"')  # DEB_BUILD_OPTIONS contains double quotes
         run(
             f'chroot {self.dpkg_overlay} /bin/bash -c "{command}"', shell=True, exception_msg=exception_message,
             env=self._get_build_env()
@@ -117,6 +118,11 @@ class BuildPackageMixin:
             shutil.move(os.path.join(package_dir, pkg), os.path.join(PKG_DIR, pkg))
             built_packages.append(pkg)
 
+        if len(built_packages) == 0:
+            raise CallError(
+                f'{self.name}: no deb or udeb generated from {package_dir}'
+            )
+
         with open(self.pkglist_hash_file_path, 'w') as f:
             f.write('\n'.join(built_packages))
 
@@ -159,7 +165,10 @@ class BuildPackageMixin:
         if self.buildcmd:
             return self.buildcmd
         else:
-            build_env = f'DEB_BUILD_OPTIONS={self.deoptions} ' if self.deoptions else ''
+            my_def_ops = ['nocheck', 'nodoc', 'noautodbgsym']
+            addition_ops = self.deoptions.split(' ') if self.deoptions else []
+            all_ops = list(set([*my_def_ops, *addition_ops]))
+            build_env = f'DEB_BUILD_OPTIONS="{" ".join(all_ops)}" ' if len(all_ops) > 0 else ''
             return [f'{build_env} debuild {" ".join(self.deflags)}']
 
     @property
