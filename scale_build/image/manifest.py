@@ -47,8 +47,13 @@ def build_manifest():
             'checksums': checksums,
             'kernel_version': glob.glob(
                 os.path.join(CHROOT_BASEDIR, 'boot/vmlinuz-*')
-            )[1].split('/')[-1][len('vmlinuz-'):],
+            )[0].split('/')[-1][len('vmlinuz-'):],
         }))
+
+    shutil.copyfile(
+        os.path.join(UPDATE_DIR, 'manifest.json'),
+        os.path.join(RELEASE_DIR, 'manifest-for-update.json')
+    )
 
     return version
 
