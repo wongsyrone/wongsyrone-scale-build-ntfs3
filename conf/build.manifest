@@ -46,11 +46,7 @@ base-packages:
   install_recommends: true
 - name: linux-headers-truenas-production-amd64
   install_recommends: true
-- name: linux-headers-truenas-debug-amd64
-  install_recommends: true
 - name: linux-image-truenas-production-amd64
-  install_recommends: true
-- name: linux-image-truenas-debug-amd64
   install_recommends: true
 - name: linux-perf-truenas
   install_recommends: true
@@ -123,8 +119,6 @@ base-packages:
   install_recommends: true
 - name: scstadmin
   install_recommends: true
-- name: scst-dbg
-  install_recommends: true
 - name: squashfs-tools
   install_recommends: true
 - name: sysstat
@@ -133,8 +127,6 @@ base-packages:
   install_recommends: true
 - name: wireguard-tools
   install_recommends: false
-- name: openzfs-zfs-modules-dbg
-  install_recommends: true
 - name: openzfs-zfs-initramfs
   install_recommends: true
 - name: nvme-cli
@@ -207,7 +199,7 @@ apt_preferences:
   Pin: "version 525.89*"
   Pin-Priority: 1000
 - Package: "*curl*"
-  Pin: "release n=bookworm-security"
+  Pin: "release n=bookworm"
   Pin-Priority: 1000
 - Package: "*firmware*"
   Pin: "release n=bookworm-backports"
@@ -227,6 +219,9 @@ apt_preferences:
 - Package: "*node*"
   Pin: "release n=bookworm-security"
   Pin-Priority: 1000
+- Package: "*openssl*"
+  Pin: "origin \"\""
+  Pin-Priority: 1050
 - Package: "*policykit*"
   Pin: "release n=bookworm-security"
   Pin-Priority: 1000
@@ -237,13 +232,13 @@ apt_preferences:
   Pin: "release n=bookworm-security"
   Pin-Priority: 1000
 - Package: "*ssl*"
-  Pin: "origin \"\""
+  Pin: "release n=bookworm"
   Pin-Priority: 1050
 - Package: "*tls*"
   Pin: "release n=bookworm-security"
   Pin-Priority: 1000
 - Package: "*zfs*"
-  Pin: "version 2.1.*"
+  Pin: "origin \"\""
   Pin-Priority: 1000
 #
 # List of additional packages installed into TrueNAS SCALE, along with link
@@ -342,14 +337,14 @@ iso-packages:
 ############################################################################
 sources:
 - name: openssl
-  repo: https://github.com/truenas/openssl
+  repo: https://github.com/wongsyrone/truenas-scale-openssl
   branch: master
   generate_version: false
   predepscmd:
     - "apt install -y wget xz-utils"
     - "./pull.sh"
 - name: kernel
-  repo: https://github.com/truenas/linux
+  repo: https://github.com/wongsyrone/truenas-scale-linux
   branch: truenas/linux-6.12
   batch_priority: 0
   supports_ccache: true
@@ -364,38 +359,22 @@ sources:
     - "apt install -y libelf-dev libdw-dev systemtap-sdt-dev libunwind-dev libslang2-dev libperl-dev binutils-dev libiberty-dev python3 python3-setuptools python3-dev liblzma-dev libzstd-dev libcap-dev libnuma-dev libbabeltrace-dev openjdk-17-jdk libcapstone-dev llvm-dev"
     # We remove git files because kernel makefile tries to interact with git for determining version
     # which results in misconfigured version due to our debian based changes
+    - "echo 'CONFIG_NTFS3_FS=y' >> scripts/package/truenas/truenas.config"
+    - "echo '# CONFIG_NTFS3_64BIT_CLUSTER is not set' >> scripts/package/truenas/truenas.config"
+    - "echo 'CONFIG_NTFS3_LZX_XPRESS=y' >> scripts/package/truenas/truenas.config"
+    - "echo '# CONFIG_NTFS3_FS_POSIX_ACL is not set' >> scripts/package/truenas/truenas.config"
+    - "cat scripts/package/truenas/truenas.config"
     - "rm -rf .git .gitattributes .gitignore"
-    - "make defconfig"
-    - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/debian_amd64.config"
-    - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/truenas.config"
-    - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/tn-production.config"
+    - "make ARCH=x86_64 defconfig"
+    - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/debian_amd64.config > /dev/null"
+    - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/truenas.config > /dev/null"
+    - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/tn-production.config > /dev/null"
     - "make syncconfig"
     - "make archprepare"
     - "./scripts/package/mkdebian"
   buildcmd:
     - "rm -rf .config.old"
     - "make -j$(nproc) bindeb-pkg"
-  subpackages:
-    - name: kernel-dbg
-      batch_priority: 0
-      supports_ccache: true
-      env:
-        EXTRAVERSION: "-debug"
-      predepscmd:
-        - "apt install -y flex bison dwarves libssl-dev devscripts"
-        # We remove git files because kernel makefile tries to interact with git for determining version
-        # which results in misconfigured version due to our debian based changes
-        - "rm -rf .git .gitattributes .gitignore"
-        - "make defconfig"
-        - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/debian_amd64.config"
-        - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/truenas.config"
-        - "./scripts/kconfig/merge_config.sh .config scripts/package/truenas/tn-debug.config"
-        - "make syncconfig"
-        - "make archprepare"
-        - "./scripts/package/mkdebian"
-      buildcmd:
-        - "rm -rf .config.old"
-        - "make -j$(nproc) bindeb-pkg"
 - name: nfs4xdr_acl_tools
   repo: https://github.com/truenas/nfs4xdr-acl-tools
   branch: master
@@ -423,36 +402,8 @@ sources:
     - "debian/rules override_dh_binary-modules"
   explicit_deps:
     - kernel
-    - kernel-dbg
     - openssl
   generate_version: false
-  subpackages:
-    - name: openzfs-dbg
-      batch_priority: 0
-      env:
-        KVERS: "$(shell apt info linux-headers-truenas-debug-amd64 | awk '/Source:/ { print $$2}' | sed 's/linux-//')"
-        KSRC: "/usr/src/linux-headers-truenas-debug-amd64"
-        KOBJ: "$(KSRC)"
-      predepscmd:
-        - "cp -r contrib/debian debian"
-        - "sed -i 's/libtool,/libtool, linux-image-truenas-debug-amd64, linux-headers-truenas-debug-amd64,/' debian/control"
-      deps_path: contrib/debian
-      prebuildcmd:
-        - "sh autogen.sh"
-        - "./configure"
-        - "cp contrib/debian/changelog debian/changelog"
-        - "sed 's/@CFGOPTS@/--enable-debug --enable-debuginfo/g' debian/rules.in > debian/rules"
-        - "chmod +x debian/rules"
-        - "sed  -i 's/Provides: openzfs-zfs-modules/Provides: openzfs-zfs-modules-dbg/'  debian/control.modules.in"
-      buildcmd:
-        - "sh autogen.sh"
-        - "./scripts/make_gitrev.sh"
-        - "debian/rules override_dh_binary-modules"
-      explicit_deps:
-        - kernel
-        - kernel-dbg
-        - openssl
-      generate_version: false
 - name: truenas_samba
   repo: https://github.com/truenas/samba
   branch: SCALE-v4-21-stable
@@ -500,10 +451,10 @@ sources:
   repo: https://github.com/truenas/truenas_connect_utils
   branch: master
 - name: truenas_installer
-  repo: https://github.com/truenas/truenas-installer
+  repo: https://github.com/wongsyrone/truenas-scale-installer.git
   branch: master
 - name: scst
-  repo: https://github.com/truenas/scst
+  repo: https://github.com/wongsyrone/truenas-scale-scst
   generate_version: false
   env:
     KVER: "$(shell apt info linux-headers-truenas-production-amd64 | awk '/Source:/ { print $$2}' | sed 's/linux-//')"
@@ -517,28 +468,7 @@ sources:
     - "make dpkg DEBEMAIL=no-reply@ixsystems.com DEBFULLNAME=TrueNAS"
   explicit_deps:
     - kernel
-    - kernel-dbg
-  branch: truenas-3.10.0-pre
-  subpackages:
-    - name: scst-dbg
-      generate_version: false
-      env:
-        KVER: "$(shell apt info linux-headers-truenas-debug-amd64 | awk '/Source:/ { print $$2}' | sed 's/linux-//')"
-        KDIR: "/lib/modules/$(KVER)/build"
-        PKG_BUILD_MODE: 2debug
-      depscmd:
-        - "cat debian/control.dbgmodules > debian/control"
-      prebuildcmd:
-        - "sed -i s/^DEBIAN_REVISION=.*/DEBIAN_REVISION=~truenas+1/g Makefile"
-        - "cat debian/control.dbgmodules > debian/control"
-        - "make debian/changelog"
-      buildcmd:
-        - "make 2debug"
-        - "make scst-dist-gzip"
-        - "make dpkg DEBEMAIL=no-reply@ixsystems.com DEBFULLNAME=TrueNAS"
-      explicit_deps:
-        - kernel
-        - kernel-dbg
+  branch: master
 - name: truenas_binaries
   repo: https://github.com/truenas/binaries
   branch: master
@@ -549,7 +479,7 @@ sources:
   prebuildcmd:
     - "sh -ex debian/fetch_node.sh"  # download and install pre-built nodejs
     - "yarn install --network-timeout 100000"
-    - "tar cvzf node_files.tgz node_modules/"
+    - "tar czf node_files.tgz node_modules/"
     - "rm -rf node_modules"
   branch: master
 - name: sedutil
@@ -594,7 +524,7 @@ sources:
   repo: https://github.com/truenas/py-nvme
   branch: master
 - name: truenas
-  repo: https://github.com/truenas/middleware
+  repo: https://github.com/wongsyrone/truenas-scale-middleware
   branch: master
   subdir: debian
   subpackages:
@@ -611,13 +541,13 @@ sources:
   repo: https://github.com/truenas/api_client
   branch: master
 - name: truenas_verify
-  repo: https://github.com/truenas/truenas_verify
+  repo: https://github.com/wongsyrone/truenas-scale-verify
   branch: master
 - name: midcli
   repo: https://github.com/truenas/midcli
   branch: master
 - name: grub2
-  repo: https://github.com/truenas/grub2
+  repo: https://github.com/wongsyrone/truenas-scale-grub2
   branch: master
   debian_fork: true
   predepscmd:
@@ -625,8 +555,17 @@ sources:
     - "./pull.sh"
   deoptions: nocheck
   generate_version: false
-  jobs: 1
   batch_priority: 150
+  subpackages:
+    - name: grub-efi-amd64-signed
+      debian_fork: true
+      predepscmd:
+        - "apt install -y wget xz-utils"
+        - "./pull_for_sign.sh"
+      deoptions: nocheck
+      generate_version: false
+      explicit_deps:
+        - grub2
 - name: parted
   repo: https://github.com/truenas/parted
   branch: master
