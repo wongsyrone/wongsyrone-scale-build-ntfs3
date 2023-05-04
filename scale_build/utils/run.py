@@ -24,7 +24,7 @@ def run(*args, **kwargs):
     exception_message = kwargs.pop('exception_msg', None)
     check = kwargs.pop('check', True)
     shell = kwargs.pop('shell', False)
-    log = kwargs.pop('log', True)
+    log = kwargs.pop('log', False)
     env = kwargs.pop('env', None) or os.environ
     if log:
         kwargs['stderr'] = subprocess.STDOUT
