@@ -24,17 +24,14 @@ class LoggingContext:
         self.mode = mode
 
     def __enter__(self):
-        self.CONTEXTS[threading.currentThread().name].append(
-            logging.FileHandler(os.path.join(LOG_DIR, self.path), self.mode, delay=True)
-        )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.CONTEXTS[threading.currentThread().name].pop()
+        pass
 
     @staticmethod
     def has_handler():
-        return bool(LoggingContext.CONTEXTS[threading.current_thread().name])
+        return False
 
     @staticmethod
     def handler():
