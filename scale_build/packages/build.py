@@ -16,9 +16,10 @@ class BuildPackageMixin:
 
     def run_in_chroot(self, command, exception_message=None):
         command = command.replace('"', '\\"')  # DEB_BUILD_OPTIONS contains double quotes
+        enable_log = False and self.name in ['grub2']  # always False for non debugging builds
         run(
             f'chroot {self.dpkg_overlay} /bin/bash -c "{command}"', shell=True, exception_msg=exception_message,
-            env=self._get_build_env()
+            env=self._get_build_env(), log=enable_log
         )
 
     @property
