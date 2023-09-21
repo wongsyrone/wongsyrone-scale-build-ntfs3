@@ -129,7 +129,7 @@ def make_iso_file():
         run_in_chroot([
             'apt-get', 'install', '-y', 'grub-common', 'grub2-common', 'grub-efi-amd64-bin',
             'grub-pc-bin', 'mtools', 'xorriso'
-        ])
+        ], log=True)
 
         # Debian GRUB EFI searches for GRUB config in a different place
         os.makedirs(os.path.join(CD_DIR, 'EFI/debian'), exist_ok=True)
