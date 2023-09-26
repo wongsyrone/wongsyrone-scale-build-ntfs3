@@ -118,6 +118,7 @@ def install_rootfs_packages_impl():
         install_cmd += list(packages_names)
 
         logger.debug(log_message)
+        run_in_chroot(['apt-cache', 'policy', package_entry['name']], log=True)
         run_in_chroot(install_cmd)
 
     # Do any custom rootfs setup
