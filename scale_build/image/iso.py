@@ -34,6 +34,7 @@ def install_iso_packages_impl():
 
     # echo "/dev/disk/by-label/TRUENAS / iso9660 loop 0 0" > ${CHROOT_BASEDIR}/etc/fstab
     for package in get_manifest()['iso-packages']:
+        run_in_chroot(['apt-cache', 'policy', package], log=True)
         run_in_chroot(['apt', 'install', '-y', package])
 
     # Inject vendor name into grub.cfg
@@ -115,6 +116,10 @@ def make_iso_file():
         run(['mount', '--bind', CD_DIR, os.path.join(CHROOT_BASEDIR, CD_DIR)])
         run(['mount', '--bind', PKG_DIR, os.path.join(CHROOT_BASEDIR, 'packages')])
         run_in_chroot(['apt-get', 'update'], check=False)
+        run_in_chroot([
+            'apt-cache', 'policy', 'grub-common', 'grub2-common', 'grub-efi-amd64-bin',
+            'grub-efi-amd64-signed', 'grub-pc-bin', 'mtools', 'xorriso'
+        ], log=True)
         run_in_chroot([
             'apt-get', 'install', '-y', 'grub-common', 'grub2-common', 'grub-efi-amd64-bin',
             'grub-efi-amd64-signed', 'grub-pc-bin', 'mtools', 'xorriso'
