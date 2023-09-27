@@ -551,6 +551,8 @@ sources:
         - "./pull_for_sign.sh"
       deoptions: nocheck
       generate_version: false
+      # use this to align deb version with already built grub2 and to-build grub-efi-amd64-signed
+      disable_dch_increment: true
       explicit_deps:
         - grub2
 - name: parted
