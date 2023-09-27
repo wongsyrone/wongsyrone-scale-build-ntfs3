@@ -68,6 +68,7 @@ INDIVIDUAL_REPO_SCHEMA = {
         'jobs': {'type': 'integer'},
         'debian_fork': {'type': 'boolean'},
         'env': {'type': 'object', 'patternProperties': {'^.+$': {'type': 'string'}}},
+        'disable_dch_increment': {'type': 'boolean'},
     },
     'additionalProperties': False,
 }
