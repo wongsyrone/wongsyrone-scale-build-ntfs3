@@ -98,11 +98,12 @@ class BuildPackageMixin:
         if self.generate_version:
             generate_version_flags = f' -v {datetime.today().strftime("%Y%m%d%H%M%S")}~truenas+1 '
 
-        self.run_in_chroot(
-            f'cd {self.package_source} && dch -b -M {generate_version_flags}--force-distribution '
-            '--distribution bullseye-truenas-unstable \'Tagged from truenas-build\'',
-            'Failed dch changelog'
-        )
+        if not self.disable_dch_increment:
+            self.run_in_chroot(
+                f'cd {self.package_source} && dch -b -M {generate_version_flags}--force-distribution '
+                '--distribution bullseye-truenas-unstable \'Tagged from truenas-build\'',
+                'Failed dch changelog'
+            )
 
         for command in self.build_command:
             self.logger.debug('Running build command: %r', command)
