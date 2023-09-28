@@ -114,32 +114,31 @@ TRUENAS_DATASETS = [
     },
     {
         'name':  'mnt',
-        'options': ['NOSUID', 'NOEXEC', 'NOACL', 'NOATIME'],
+        'options': ['NOACL', 'NOATIME'],
     },
     {
         'name':  'etc',
-        'options': ['NOSUID', 'NOACL'],
+        'options': ['NOACL'],
         'snap': True
     },
     {
         'name':  'home',
-        'options': ['NOSUID', 'NOACL', 'NOEXEC'],
+        'options': ['NOACL'],
         'clone': True,
     },
     {
         'name':  'opt',
-        'options': ['NOSUID', 'NOACL', 'RO'],
+        'options': ['NOACL'],
         'snap': True
     },
     {
         'name':  'root',
-        'options': ['NOSUID', 'NOACL'],
-        'mode': 0o700,
-        'clone': True,
+        'options': ['NOACL'],
+        'clone': True
     },
     {
         'name':  'usr',
-        'options': ['NOACL', 'RO', 'NOATIME'],
+        'options': ['NOACL', 'NOATIME'],
         'snap': True
     },
     {
