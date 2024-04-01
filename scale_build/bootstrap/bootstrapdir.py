@@ -195,3 +195,24 @@ class CdromBootstrapDirectory(BootstrapDir):
     @property
     def cache_filename(self):
         return 'basechroot-cdrom.squashfs'
+
+    def debootstrap_debian(self):
+        manifest = get_manifest()
+        run(
+            ['debootstrap'] + self.deopts + [
+                '--foreign', '--keyring', '/etc/apt/trusted.gpg.d/debian-archive-truenas-automatic.gpg',
+                manifest['debian_release'],
+                self.chroot_basedir, get_apt_repos(check_custom=True)['url']
+            ]
+        )
+        for reference_file in REFERENCE_FILES:
+            shutil.copyfile(
+                os.path.join(REFERENCE_FILES_DIR, reference_file),
+                os.path.join(self.chroot_basedir, reference_file)
+            )
+        run(['chroot', self.chroot_basedir, '/debootstrap/debootstrap', '--second-stage'])
+        # For some reason debootstrap --second stage is removing ftp group, it does get added back by some
+        # other package later on but currently it results in base cache not reflecting reference files
+        # so we add it back here
+        # FIXME: Figure out why debootstrap --second-stage is removing ftp group
+        shutil.copyfile(os.path.join(REFERENCE_FILES_DIR, 'etc/group'), os.path.join(self.chroot_basedir, 'etc/group'))
