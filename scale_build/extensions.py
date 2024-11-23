@@ -27,8 +27,8 @@ def build_extensions(rootfs_image, dst_dir):
             shutil.rmtree(path)
         os.makedirs(path)
 
-    run(["unsquashfs", "-dest", EXTENSIONS_CHROOT, rootfs_image])
-    run(["unsquashfs", "-dest", EXTENSIONS_CHROOT_BASE, rootfs_image])
+    run(["unsquashfs", "-f", "-dest", EXTENSIONS_CHROOT, rootfs_image])
+    run(["unsquashfs", "-f", "-dest", EXTENSIONS_CHROOT_BASE, rootfs_image])
 
     kernel_version = get_kernel_version(EXTENSIONS_CHROOT)
 
