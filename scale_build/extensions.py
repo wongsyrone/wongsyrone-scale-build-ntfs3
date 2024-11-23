@@ -21,7 +21,7 @@ def build_extensions(rootfs_image, dst_dir):
     if os.path.exists(chroot_base):
         shutil.rmtree(chroot_base)
     os.makedirs(chroot_base)
-    run(["unsquashfs", "-dest", chroot_base, rootfs_image])
+    run(["unsquashfs", "-f", "-dest", chroot_base, rootfs_image])
 
     for klass, name in [(DevToolsExtension, "dev-tools"), (NvidiaExtension, "nvidia")]:
         klass(rootfs_image, chroot_base, chroot).build(name, f"{dst_dir}/{name}.raw")
@@ -44,7 +44,7 @@ class Extension:
             shutil.rmtree(self.chroot)
         os.makedirs(self.chroot)
 
-        run(["unsquashfs", "-dest", self.chroot, self.base_image])
+        run(["unsquashfs", "-f", "-dest", self.chroot, self.base_image])
 
         os.makedirs(os.path.join(self.chroot, "proc"), exist_ok=True)
         run(["mount", "proc", os.path.join(self.chroot, "proc"), "-t", "proc"])
