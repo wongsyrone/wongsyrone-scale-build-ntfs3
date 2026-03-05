@@ -16,7 +16,7 @@ from scale_build.utils.paths import PKG_DIR
 class BuildPackageMixin:
 
     def run_in_chroot(self, command, exception_message=None):
-        enable_log = False and self.name in ['grub2']  # always False for non debugging builds
+        enable_log = True and self.name in ['truenas']  # always False for non debugging builds
         run(
             f'chroot {self.dpkg_overlay} /bin/bash -c {shlex.quote(command)}', shell=True,
             exception_msg=exception_message,
