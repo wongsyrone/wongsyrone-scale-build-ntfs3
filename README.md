@@ -1,8 +1,12 @@
-<p align="center">
- <a href="https://discord.gg/Q3St5fPETd"><img alt="Join Discord" src="https://badgen.net/discord/members/Q3St5fPETd/?icon=discord&label=Join%20the%20TrueNAS%20Community" /></a>
- <a href="https://www.truenas.com/community/"><img alt="Join Forums" src="https://badgen.net/badge/Forums/Post%20Now//purple" /></a> 
- <a href="https://jira.ixsystems.com"><img alt="File Issue" src="https://badgen.net/badge/Jira/File%20Issue//red?icon=jira" /></a>
-</p>
+### ⚠️ Deprecation Notice
+
+This repository is no longer actively maintained.
+
+The TrueNAS build system previously hosted here has been moved to an internal infrastructure. This transition was necessary to meet new security requirements, including support for Secure Boot and related platform integrity features that require tighter control over the build and signing pipeline.
+
+No further updates, pull requests, or issues will be accepted. Existing content is preserved here for historical reference only.
+
+For questions about TrueNAS builds or releases, please refer to the [official TrueNAS documentation](https://docs.truenas.com) or the [TrueNAS Community Forums](https://forums.truenas.com).
 
 # truenas-build
 
