@@ -104,6 +104,9 @@ def install_rootfs_packages_impl():
 
     run_in_chroot(['apt', 'update'])
 
+    # Install all external packages defined in build.manifest
+    install_external_packages()
+
     manifest = get_manifest()
     packages_to_install = {False: set(), True: set()}
     for package_entry in itertools.chain(manifest['base-packages'], manifest['additional-packages']):
@@ -313,9 +316,6 @@ def install_external_packages():
 
 def custom_rootfs_setup():
     # Any kind of custom mangling of the built rootfs image can exist here
-
-    # Install all external packages defined in build.manifest
-    install_external_packages()
 
     os.makedirs(os.path.join(CHROOT_BASEDIR, 'boot/grub'), exist_ok=True)
 
