@@ -2,7 +2,7 @@
 
 This repository is no longer actively maintained.
 
-The TrueNAS build system previously hosted here has been moved to an internal infrastructure. This transition was necessary to meet new security requirements, including support for Secure Boot and related platform integrity features that require tighter control over the build and signing pipeline.
+The TrueNAS build system previously hosted here has been moved to an internal infrastructure. 
 
 No further updates, pull requests, or issues will be accepted. Existing content is preserved here for historical reference only.
 
