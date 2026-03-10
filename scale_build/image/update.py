@@ -235,14 +235,14 @@ def download_and_install_deb_package(package_name, download_url, deb_filename, p
         # Install the package in the chroot
         logger.info(f'Installing {package_name} package')
         try:
-            run_in_chroot(['dpkg', '-i', f'/tmp/{deb_filename}'])
+            run_in_chroot(['dpkg', '-i', f'/tmp/{deb_filename}'], check=False, log=True)
             # Fix any dependency issues
-            run_in_chroot(['apt-get', 'install', '-f', '-y'])
+            run_in_chroot(['apt-get', 'install', '-f', '-y'], log=True)
 
             # Run any additional post-install commands
             if post_install_commands:
                 for cmd in post_install_commands:
-                    run_in_chroot(cmd)
+                    run_in_chroot(cmd, log=True)
 
             logger.info(f'Successfully installed {package_name} package')
         except Exception as e:
