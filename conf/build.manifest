@@ -1,5 +1,5 @@
 ---
-code_name: "Halfmoon"
+code_name: "27"
 debian_release: "trixie"
 identity_file_path_default: "~/.ssh/id_rsa"
 #
@@ -10,26 +10,26 @@ identity_file_path_default: "~/.ssh/id_rsa"
 apt-repos:
   base-url: https://apt.sys.truenas.net/
   base-url-internal: http://apt-mirror.tn.ixsystems.net/
-  url: halfmoon/nightlies/debian/
+  url: 27/nightlies/debian/
   distribution: trixie
   components: main
   additional:
-  - url: halfmoon/nightlies/debian-security/
+  - url: 27/nightlies/debian-security/
     distribution: trixie-security
     component: main
-  - url: halfmoon/nightlies/debian-backports/
+  - url: 27/nightlies/debian-backports/
     distribution: trixie-backports
     component: "main contrib non-free non-free-firmware"
-  - url: halfmoon/nightlies/debian-debug/
+  - url: 27/nightlies/debian-debug/
     distribution: trixie-debug
     component: main
-  - url: halfmoon/nightlies/yarn/
+  - url: 27/nightlies/yarn/
     distribution: stable
     component: main
-  - url: halfmoon/nightlies/netdata/
+  - url: 27/nightlies/netdata/
     distribution: trixie
     component: main
-  - url: halfmoon/nightlies/docker/
+  - url: 27/nightlies/docker/
     distribution: trixie
     component: stable
     key: keys/docker.gpg
